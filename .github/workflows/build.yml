@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for tvOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project Webby.xcodeproj -scheme Webby -configuration Debug \
+            -destination 'generic/platform=tvOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tee build.log | grep -E "error:|warning:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Build for Apple TV device (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project Webby.xcodeproj -scheme Webby -configuration Release \
+            -destination 'generic/platform=tvOS' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tee device.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" device.log
