@@ -41,7 +41,7 @@ final class BrowserViewController: UIViewController {
     private let cursor = CursorView()
     private let hud = StatusHUDView()
     private let toast = ToastView()
-    private let progressBar = UIProgressView(progressViewStyle: .bar)
+    private let progressBar = UIProgressView(progressViewStyle: .default)
     private var startPageHost: UIHostingController<StartPageView>?
 
     private(set) var mode: InputMode = .cursor
