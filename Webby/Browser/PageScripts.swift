@@ -47,8 +47,8 @@ enum PageScripts {
     })();
     """#
 
-    /// Ratio between the web view's width in points and the page's CSS viewport width.
-    static let viewportWidth = "window.innerWidth"
+    /// "documentWidth,scrollX,scrollY" in CSS pixels, used to map screen points into the page.
+    static let layoutMetrics = "document.documentElement.scrollWidth + ',' + window.scrollX + ',' + window.scrollY"
 
     /// Returns "1" when the element under (x, y) is interactive.
     static func hoverTest(x: Double, y: Double) -> String {

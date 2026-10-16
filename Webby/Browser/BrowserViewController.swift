@@ -512,11 +512,17 @@ final class BrowserViewController: UIViewController {
 
     // MARK: Page interaction
 
+    /// Maps a screen point to CSS client coordinates. The engine lays the whole document out
+    /// in its scroll view's content at `contentSize.width / documentWidth` points per CSS pixel,
+    /// so convert into content space, unscale, then subtract the page's scroll position.
     private func cssPoint(for screenPoint: CGPoint, in webView: WBWebView) -> CGPoint {
-        let local = view.convert(screenPoint, to: webView)
-        let innerWidth = Double(webView.evaluate(PageScripts.viewportWidth) ?? "") ?? Double(webView.bounds.width)
-        let scale = innerWidth > 0 ? Double(webView.bounds.width) / innerWidth : 1
-        return CGPoint(x: Double(local.x) / scale, y: Double(local.y) / scale)
+        guard let scrollView = webView.scrollView else { return screenPoint }
+        let content = view.convert(screenPoint, to: scrollView)
+        let metrics = (webView.evaluate(PageScripts.layoutMetrics) ?? "").split(separator: ",").compactMap { Double($0) }
+        guard metrics.count == 3 else { return content }
+        let (documentWidth, scrollX, scrollY) = (metrics[0], metrics[1], metrics[2])
+        let scale = documentWidth > 0 && scrollView.contentSize.width > 0 ? Double(scrollView.contentSize.width) / documentWidth : 1
+        return CGPoint(x: Double(content.x) / scale - scrollX, y: Double(content.y) / scale - scrollY)
     }
 
     private func updateHover() {
@@ -762,6 +768,9 @@ extension BrowserViewController: BrowserTabDelegate {
     }
 
     func tabDidUpdate(_ tab: BrowserTab) {
-        if tab === currentTab { syncContent() }
+        guard tab === currentTab else { return }
+        // The page under the pointer may have changed, so refresh its hover state.
+        hoverNeedsCheck = true
+        syncContent()
     }
 }

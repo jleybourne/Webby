@@ -39,6 +39,8 @@ struct TabSwitcherView: View {
                 }
                 .padding(.vertical, 40)
             }
+            // Let the focused card's lift effect draw past the scroll view's edges.
+            .scrollClipDisabled()
         }
     }
 }
@@ -111,6 +113,7 @@ struct BookmarksView: View {
                     }
                     .padding(.vertical, 40)
                 }
+                .scrollClipDisabled()
                 Text("Press and hold a bookmark for more options.")
                     .font(.system(size: 22))
                     .foregroundStyle(.secondary)
