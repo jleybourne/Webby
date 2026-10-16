@@ -1,5 +1,11 @@
-// node render.js in.svg out.png W H
+// node render.js IN.svg OUT.png WIDTH HEIGHT — renders an SVG with Chromium (Playwright), transparent background.
+const path = require('path');
 const { chromium } = require('playwright');
-(async () => { const [,, inp, out, w, h] = process.argv; const b = await chromium.launch();
-const p = await b.newPage({ viewport: { width: +w, height: +h } });
-await p.goto('file://' + require('path').resolve(inp)); await p.screenshot({ path: out, omitBackground: true }); await b.close(); })();
+(async () => {
+  const [, , inp, out, w, h] = process.argv;
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: +w, height: +h } });
+  await page.goto('file://' + path.resolve(inp));
+  await page.screenshot({ path: out, omitBackground: true });
+  await browser.close();
+})();
