@@ -72,4 +72,4 @@ Webby/
 ```
 
 CI (`.github/workflows/build.yml`) builds every push for the tvOS Simulator and for devices.
-To regenerate the icons, run `python3 scripts/generate_icons.py .` (requires Pillow).
+To regenerate the icons, run `bash scripts/icon/build.sh` (requires Pillow and Node with Playwright).
