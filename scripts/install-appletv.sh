@@ -4,7 +4,7 @@
 #   scripts/install-appletv.sh                  # the first paired Apple TV
 #   scripts/install-appletv.sh "Living Room"    # a specific one, by name
 #
-# Signs with the App Store Connect API key in ~/Downloads (team 57PZQ6DM94), so Xcode doesn't need an
+# Signs with the App Store Connect API key named in ~/.webby-release, so Xcode doesn't need an
 # Apple ID signed in. The first run registers the Apple TV on the developer account and creates a
 # development certificate in this Mac's keychain; later runs reuse both.
 #
@@ -13,9 +13,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-KEY_ID=83W34R3JB7
-ISSUER_ID=8be62f06-e439-49eb-8d87-0546945e8386
-KEY_PATH="$HOME/Downloads/AuthKey_$KEY_ID.p8"
+# Your App Store Connect API key and team, from ~/.webby-release (see scripts/asc.py).
+[ -f "$HOME/.webby-release" ] && source "$HOME/.webby-release"
+: "${ASC_KEY_ID:?Set ASC_KEY_ID in ~/.webby-release}" "${ASC_ISSUER_ID:?Set ASC_ISSUER_ID in ~/.webby-release}"
+: "${TEAM_ID:?Set TEAM_ID in ~/.webby-release}"
+KEY_ID=$ASC_KEY_ID
+ISSUER_ID=$ASC_ISSUER_ID
+KEY_PATH="${ASC_KEY_PATH:-$HOME/Downloads/AuthKey_$KEY_ID.p8}"
 [ -f "$KEY_PATH" ] || { echo "Missing $KEY_PATH"; exit 1; }
 
 DEVICE="${1:-}"

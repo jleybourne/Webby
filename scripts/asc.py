@@ -4,13 +4,29 @@
     python3 scripts/asc.py next-build    # one more than the highest build on App Store Connect
     python3 scripts/asc.py builds        # recent builds and their processing state
 
-Uses the API key in ~/Downloads; the key never leaves this Mac.
+Reads your key from ~/.webby-release (kept out of the repo):
+
+    ASC_KEY_ID=XXXXXXXXXX
+    ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    TEAM_ID=XXXXXXXXXX
+    ASC_KEY_PATH=~/Downloads/AuthKey_XXXXXXXXXX.p8   # optional; this is the default
+
+The key never leaves this Mac.
 """
 import base64, json, os, subprocess, sys, time, urllib.request, urllib.error
 
-KEY_ID = "83W34R3JB7"
-ISSUER_ID = "8be62f06-e439-49eb-8d87-0546945e8386"
-KEY_PATH = os.path.expanduser(f"~/Downloads/AuthKey_{KEY_ID}.p8")
+def _release_settings() -> dict:
+    path = os.path.expanduser("~/.webby-release")
+    if not os.path.exists(path):
+        return {}
+    pairs = (line.split("=", 1) for line in open(path) if "=" in line and not line.lstrip().startswith("#"))
+    return {k.strip(): v.split("#")[0].strip() for k, v in pairs}
+
+
+_settings = _release_settings()
+KEY_ID = _settings.get("ASC_KEY_ID", "")
+ISSUER_ID = _settings.get("ASC_ISSUER_ID", "")
+KEY_PATH = os.path.expanduser(_settings.get("ASC_KEY_PATH", f"~/Downloads/AuthKey_{KEY_ID}.p8"))
 BUNDLE_ID = "app.webby"
 OPENSSL = "/usr/bin/openssl"
 API = "https://api.appstoreconnect.apple.com/v1"
@@ -65,6 +81,8 @@ def builds():
 
 
 if __name__ == "__main__":
+    if not KEY_ID or not ISSUER_ID:
+        sys.exit("Set ASC_KEY_ID and ASC_ISSUER_ID in ~/.webby-release")
     if not os.path.exists(KEY_PATH):
         sys.exit(f"Can't find {KEY_PATH}")
     cmd = sys.argv[1] if len(sys.argv) > 1 else "builds"

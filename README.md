@@ -54,13 +54,13 @@ xcodegen generate
 open Webby.xcodeproj
 ```
 
-1. In Xcode, select the **Webby** target, open **Signing & Capabilities**, and choose your Team. Change the bundle ID if it's already taken.
+1. In `project.yml`, set `DEVELOPMENT_TEAM` to your own Team ID (both targets), change the bundle IDs (`app.webby`, `app.webby.topshelf`) and the app group (`group.app.webby`) to ones you own, then run `xcodegen generate` again. Free Apple IDs can't use iCloud: remove the `ubiquity-kvstore-identifier` entitlement and bookmarks just won't sync.
 2. Pair your Apple TV: on the Apple TV, open **Settings → Remotes and Devices → Remote App and Devices**. In Xcode, open **Window → Devices and Simulators**.
 3. Select your Apple TV as the run destination and press **⌘R**.
 
 > With a free Apple ID, sideloaded apps expire after 7 days. Re-run from Xcode to refresh. A paid developer account extends this to a year.
 
-**Maintainer scripts.** These use the project's own team and an App Store Connect API key in `~/Downloads`, so Xcode needs no Apple ID:
+**Command-line scripts.** These sign with an App Store Connect API key instead of an Apple ID in Xcode. Put your key's details in `~/.webby-release` (outside the repo; `scripts/asc.py` shows the format):
 
 - `scripts/install-appletv.sh [name]` builds, signs and installs on a paired Apple TV.
 - `scripts/testflight.sh` archives and uploads to TestFlight. `python3 scripts/asc.py builds` shows processing status.
@@ -77,9 +77,19 @@ Webby/
 ├── Engine/         WBWebView (Obj-C runtime wrapper), ContentBlocker (URLProtocol)
 ├── Browser/        BrowserViewController (remote input, pointer, scrolling), tabs, injected JS
 ├── Store/          Settings, bookmarks and history persistence
-├── UI/             SwiftUI: menu, start page, address bar, tabs, bookmarks, history, settings
-└── Resources/      Info.plist, layered app icon and Top Shelf images
+├── UI/             SwiftUI: menu, start page, address bar, tabs, bookmarks, history, settings, find bar
+└── Resources/      Info.plist, entitlements, layered app icon and Top Shelf images
+Shared/             Top Shelf favourites, shared by the app and the extension
+TopShelf/           Top Shelf extension
+scripts/            Install on an Apple TV, upload to TestFlight, render the icon
 ```
 
-CI (`.github/workflows/build.yml`) builds every push for the tvOS Simulator and for devices.
 To regenerate the icons, run `bash scripts/icon/build.sh` (requires Pillow and Node with Playwright).
+
+## Contributing
+
+Issues and pull requests are welcome. Webby is a personal project, so replies may take a while.
+
+## License
+
+Webby is released under the [MIT License](LICENSE). It isn't affiliated with or endorsed by Apple.
