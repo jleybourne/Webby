@@ -68,6 +68,23 @@ enum PageScripts {
     static func click(x: Double, y: Double) -> String {
         """
         (function(x,y){
+          // A sign-in form: the clicked field is its only visible password field, or the
+          // text field just before it. Returns the username (may be null) and password inputs.
+          function __webbyLoginFields(field) {
+            function visible(el) { return el.offsetParent !== null && !el.disabled && !el.readOnly; }
+            var scope = field.form || document;
+            var inputs = Array.prototype.filter.call(scope.querySelectorAll('input'), visible);
+            var passwords = inputs.filter(function(el) { return (el.type || '').toLowerCase() === 'password'; });
+            if (passwords.length !== 1) { return null; }
+            var pass = passwords[0];
+            var user = null;
+            var userTypes = ['text','email','tel',''];
+            for (var i = inputs.indexOf(pass) - 1; i >= 0; i--) {
+              if (userTypes.indexOf((inputs[i].getAttribute('type') || '').toLowerCase()) >= 0) { user = inputs[i]; break; }
+            }
+            if (field !== pass && field !== user) { return null; }
+            return {user: user, pass: pass};
+          }
           var e = document.elementFromPoint(x,y);
           if (!e) { return JSON.stringify({kind:'none'}); }
           var textTypes = ['text','search','email','url','tel','password','number',''];
@@ -81,13 +98,21 @@ enum PageScripts {
               for (var i = 0; i < field.options.length; i++) { opts.push(field.options[i].text); }
               return JSON.stringify({kind:'select', options:opts, selected:field.selectedIndex});
             }
+            if (tag === 'input' && textTypes.indexOf(type) >= 0) {
+              var login = __webbyLoginFields(field);
+              if (login) {
+                window.__webbyLogin = login;
+                return JSON.stringify({kind:'login', username: login.user ? login.user.value : null,
+                                       newPassword: (login.pass.getAttribute('autocomplete') || '') === 'new-password'});
+              }
+            }
             if (tag === 'textarea' || field.isContentEditable || (tag === 'input' && textTypes.indexOf(type) >= 0)) {
               window.__webbyFocused = field;
               try { field.focus(); } catch (err) {}
               var label = field.getAttribute('aria-label') || field.getAttribute('placeholder') || field.getAttribute('name') || field.getAttribute('title') || '';
               if (!label && field.id) { var l = document.querySelector('label[for="' + field.id + '"]'); if (l) { label = l.innerText; } }
               var value = field.isContentEditable ? field.innerText : field.value;
-              return JSON.stringify({kind:'text', value:value || '', inputType: field.isContentEditable ? 'text' : (tag === 'textarea' ? 'textarea' : type || 'text'), label:label || '', hasForm: !!field.form});
+              return JSON.stringify({kind:'text', value:value || '', inputType: field.isContentEditable ? 'text' : (tag === 'textarea' ? 'textarea' : type || 'text'), label:label || '', hasForm: !!field.form, autocomplete: (field.getAttribute('autocomplete') || '').toLowerCase()});
             }
           }
           var opts = {bubbles:true, cancelable:true, view:window, clientX:x, clientY:y, button:0};
@@ -134,6 +159,35 @@ enum PageScripts {
           }
           return '1';
         })(\(jsString(value)), \(submit ? "true" : "false"));
+        """
+    }
+
+    /// Fills the sign-in form found by `click`, then optionally submits it.
+    static func setLogin(username: String?, password: String, submit: Bool) -> String {
+        """
+        (function(u, p, submit){
+          var login = window.__webbyLogin;
+          if (!login) { return '0'; }
+          function set(f, v) {
+            var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+            if (setter && setter.set) { setter.set.call(f, v); } else { f.value = v; }
+            f.dispatchEvent(new Event('input', {bubbles:true}));
+            f.dispatchEvent(new Event('change', {bubbles:true}));
+          }
+          if (login.user && u !== null) { set(login.user, u); }
+          set(login.pass, p);
+          if (submit) {
+            var f = login.pass;
+            var kd = {bubbles:true, cancelable:true, key:'Enter', code:'Enter', keyCode:13, which:13};
+            var proceed = f.dispatchEvent(new KeyboardEvent('keydown', kd));
+            f.dispatchEvent(new KeyboardEvent('keypress', kd));
+            f.dispatchEvent(new KeyboardEvent('keyup', kd));
+            if (proceed && f.form) {
+              if (f.form.requestSubmit) { f.form.requestSubmit(); } else { f.form.submit(); }
+            }
+          }
+          return '1';
+        })(\(username.map(jsString) ?? "null"), \(jsString(password)), \(submit ? "true" : "false"));
         """
     }
 

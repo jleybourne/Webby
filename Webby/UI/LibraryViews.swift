@@ -21,14 +21,8 @@ struct TabSwitcherView: View {
         PanelContainer(title: "Tabs", dismiss: dismiss) {
             HStack(spacing: 24) {
                 Button { onNewTab() } label: { Label("New Tab", systemImage: "plus") }
-                // No destructive role: tvOS draws it as red text on a light-red fill
-                // over this material, which is hard to read. Only the icon is red.
                 Button { tabManager.closeAll(); dismiss() } label: {
-                    Label {
-                        Text("Close All")
-                    } icon: {
-                        Image(systemName: "xmark").foregroundStyle(.red)
-                    }
+                    DestructiveLabel("Close All", systemImage: "xmark")
                 }
             }
         } content: {
@@ -141,8 +135,8 @@ struct HistoryView: View {
     var body: some View {
         PanelContainer(title: "History", dismiss: dismiss) {
             if !library.history.isEmpty {
-                Button(role: .destructive) { confirmClear = true } label: {
-                    Label("Clear History", systemImage: "trash")
+                Button { confirmClear = true } label: {
+                    DestructiveLabel("Clear History", systemImage: "trash")
                 }
             }
         } content: {

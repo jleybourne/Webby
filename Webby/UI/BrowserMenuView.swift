@@ -41,9 +41,7 @@ struct BrowserMenuView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(colors: [.black.opacity(0.92), .black.opacity(0.75), .black.opacity(0.1)],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+            OverlayBackdrop()
 
             VStack(alignment: .leading, spacing: 34) {
                 header

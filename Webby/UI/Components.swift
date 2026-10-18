@@ -150,6 +150,39 @@ struct ChromeButtonStyle: ButtonStyle {
     }
 }
 
+/// Heavy blur plus a dark tint, so whatever is underneath (a bright web page, the
+/// start page's own title and search bar) reads as soft colour, never as content.
+struct OverlayBackdrop: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.thickMaterial)
+            LinearGradient(colors: [.black.opacity(0.78), .black.opacity(0.62)],
+                           startPoint: .top, endPoint: .bottom)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// A button label for destructive actions. Only the icon is red: tvOS's destructive
+/// role draws red text on a light-red fill, which is hard to read.
+struct DestructiveLabel: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage).foregroundStyle(.red)
+        }
+    }
+}
+
 /// Full-screen frosted panel with a title row; Menu closes it.
 struct PanelContainer<Content: View, Accessory: View>: View {
     let title: String
@@ -159,8 +192,7 @@ struct PanelContainer<Content: View, Accessory: View>: View {
 
     var body: some View {
         ZStack {
-            Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
-            Color.black.opacity(0.55).ignoresSafeArea()
+            OverlayBackdrop()
             VStack(alignment: .leading, spacing: 30) {
                 HStack(alignment: .center) {
                     Text(title)

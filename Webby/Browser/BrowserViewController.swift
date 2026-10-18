@@ -545,7 +545,11 @@ final class BrowserViewController: UIViewController {
             presentTextInput(value: result["value"] as? String ?? "",
                              label: result["label"] as? String ?? "",
                              inputType: result["inputType"] as? String ?? "text",
-                             hasForm: result["hasForm"] as? Bool ?? false)
+                             hasForm: result["hasForm"] as? Bool ?? false,
+                             autocomplete: result["autocomplete"] as? String ?? "")
+        case "login":
+            presentLogin(username: result["username"] as? String,
+                         isNewPassword: result["newPassword"] as? Bool ?? false)
         case "select":
             presentSelect(options: result["options"] as? [String] ?? [],
                           selected: result["selected"] as? Int ?? -1)
@@ -554,7 +558,7 @@ final class BrowserViewController: UIViewController {
         }
     }
 
-    private func presentTextInput(value: String, label: String, inputType: String, hasForm: Bool) {
+    private func presentTextInput(value: String, label: String, inputType: String, hasForm: Bool, autocomplete: String) {
         let title = label.isEmpty ? "Enter Text" : label.trimmingCharacters(in: .whitespacesAndNewlines)
         let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
         alert.addTextField { field in
@@ -570,6 +574,13 @@ final class BrowserViewController: UIViewController {
                 field.autocapitalizationType = .none
                 field.autocorrectionType = .no
             }
+            // Lets tvOS offer AutoFill from a nearby iPhone, e.g. the username step of a
+            // two-page sign-in, or a code sent by text message.
+            switch autocomplete {
+            case "username", "email": field.textContentType = .username
+            case "one-time-code": field.textContentType = .oneTimeCode
+            default: break
+            }
         }
         let submitTitle = inputType == "search" ? "Search" : "Go"
         alert.addAction(UIAlertAction(title: submitTitle, style: .default) { [weak self, weak alert] _ in
@@ -580,6 +591,41 @@ final class BrowserViewController: UIViewController {
             let text = alert?.textFields?.first?.text ?? ""
             self?.currentTab?.evaluate(PageScripts.setFocusedValue(text, submit: false))
         })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    /// One dialog for a whole sign-in form. Marking the fields as username and password
+    /// makes tvOS offer AutoFill from the user's iPhone (or their Apple TV's saved passwords).
+    private func presentLogin(username: String?, isNewPassword: Bool) {
+        let host = URLResolver.displayHost(currentTab?.url)
+        let title = host.isEmpty ? (isNewPassword ? "Create Account" : "Sign In") : (isNewPassword ? "Create Account on \(host)" : "Sign In to \(host)")
+        let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
+        if let username {
+            alert.addTextField { field in
+                field.text = username
+                field.placeholder = "Username or Email"
+                field.textContentType = .username
+                field.keyboardType = .emailAddress
+                field.autocapitalizationType = .none
+                field.autocorrectionType = .no
+            }
+        }
+        alert.addTextField { field in
+            field.placeholder = "Password"
+            field.textContentType = isNewPassword ? .newPassword : .password
+            field.isSecureTextEntry = true
+        }
+        func fill(submit: Bool) -> (UIAlertAction) -> Void {
+            { [weak self, weak alert] _ in
+                let fields = alert?.textFields ?? []
+                let user = username == nil ? nil : fields.first?.text ?? ""
+                let password = fields.last?.text ?? ""
+                self?.currentTab?.evaluate(PageScripts.setLogin(username: user, password: password, submit: submit))
+            }
+        }
+        alert.addAction(UIAlertAction(title: isNewPassword ? "Continue" : "Sign In", style: .default, handler: fill(submit: true)))
+        alert.addAction(UIAlertAction(title: "Done", style: .default, handler: fill(submit: false)))
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
     }
