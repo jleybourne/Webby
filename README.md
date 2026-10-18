@@ -55,6 +55,11 @@ open Webby.xcodeproj
 
 > With a free Apple ID, sideloaded apps expire after 7 days. Re-run from Xcode to refresh. A paid developer account extends this to a year.
 
+**Maintainer scripts.** These use the project's own team and an App Store Connect API key in `~/Downloads`, so Xcode needs no Apple ID:
+
+- `scripts/install-appletv.sh [name]` builds, signs and installs on a paired Apple TV.
+- `scripts/testflight.sh` archives and uploads to TestFlight. `python3 scripts/asc.py builds` shows processing status.
+
 ### App Store note
 
 tvOS doesn't offer a public web view. Webby loads the WebKit-backed `UIWebView` class that ships inside tvOS at runtime, through a small Objective-C wrapper (`Webby/Engine/WBWebView.m`). This works for personal and sideloaded installs, but **App Review won't accept it**. If a future tvOS release removes the class, Webby detects that and tells you, rather than crashing.
