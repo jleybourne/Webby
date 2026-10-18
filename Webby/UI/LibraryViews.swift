@@ -21,8 +21,14 @@ struct TabSwitcherView: View {
         PanelContainer(title: "Tabs", dismiss: dismiss) {
             HStack(spacing: 24) {
                 Button { onNewTab() } label: { Label("New Tab", systemImage: "plus") }
-                Button(role: .destructive) { tabManager.closeAll(); dismiss() } label: {
-                    Label("Close All", systemImage: "xmark")
+                // No destructive role: tvOS draws it as red text on a light-red fill
+                // over this material, which is hard to read. Only the icon is red.
+                Button { tabManager.closeAll(); dismiss() } label: {
+                    Label {
+                        Text("Close All")
+                    } icon: {
+                        Image(systemName: "xmark").foregroundStyle(.red)
+                    }
                 }
             }
         } content: {

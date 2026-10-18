@@ -11,7 +11,6 @@ import SwiftUI
 struct AddressSearchView: View {
     @ObservedObject var library: LibraryStore
     @ObservedObject var settings: BrowserSettings
-    let initialText: String
     let onSubmit: (String) -> Void
     let onOpen: (URL) -> Void
     let dismiss: () -> Void
@@ -54,7 +53,6 @@ struct AddressSearchView: View {
             .onSubmit(of: .search) { if !trimmed.isEmpty { onSubmit(trimmed) } }
             .task(id: text) { await loadSuggestions(for: text) }
         }
-        .onAppear { text = initialText }
         .onExitCommand(perform: dismiss)
     }
 

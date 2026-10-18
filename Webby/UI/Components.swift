@@ -168,6 +168,9 @@ struct PanelContainer<Content: View, Accessory: View>: View {
                     Spacer()
                     accessory()
                 }
+                // The header spans the full width, so as a focus section it catches
+                // Up from content anywhere below and hands focus to the buttons.
+                .focusSection()
                 content()
             }
             .padding(.horizontal, 90)

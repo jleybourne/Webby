@@ -634,11 +634,10 @@ final class BrowserViewController: UIViewController {
         present(host, animated: animated)
     }
 
-    private func presentSearch(initialText: String = "") {
+    private func presentSearch() {
         let search = AddressSearchView(
             library: library,
             settings: settings,
-            initialText: initialText,
             onSubmit: { [weak self] text in
                 self?.dismiss(animated: true) { self?.currentTab?.load(input: text) }
             },
@@ -660,7 +659,7 @@ final class BrowserViewController: UIViewController {
         case .home:
             if let home = settings.homePageURL { tab.load(home) } else { tab.showStartPage() }
         case .search:
-            presentSearch(initialText: tab.url?.absoluteString ?? "")
+            presentSearch()
         case .newTab:
             let newTab = tabManager.newTab(url: settings.homePageURL, select: true, after: tab)
             if newTab.url == nil { presentSearch() }
