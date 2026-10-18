@@ -5,7 +5,7 @@
 #   scripts/testflight.sh
 #
 # Needs the App Store Connect API key in ~/Downloads and a tvOS app with bundle ID
-# au.leybourne.webby on App Store Connect. The app is archived unsigned and signed for the App Store
+# app.webby on App Store Connect. The app is archived unsigned and signed for the App Store
 # during export by Apple's cloud signing, so no certificates are needed on this Mac.
 #
 # Webby uses a private API (UIWebView on tvOS). App Store Connect may reject the build during

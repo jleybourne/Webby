@@ -45,5 +45,5 @@ fi
 
 APP=build/DD-device/Build/Products/Release-appletvos/Webby.app
 xcrun devicectl device install app --device "$DEVICE" "$APP"
-xcrun devicectl device process launch --device "$DEVICE" au.leybourne.webby || true
+xcrun devicectl device process launch --device "$DEVICE" app.webby || true
 echo "Done. A free or paid team's development build keeps working until its profile expires; re-run to renew."

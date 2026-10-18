@@ -11,7 +11,7 @@ import base64, json, os, subprocess, sys, time, urllib.request, urllib.error
 KEY_ID = "83W34R3JB7"
 ISSUER_ID = "8be62f06-e439-49eb-8d87-0546945e8386"
 KEY_PATH = os.path.expanduser(f"~/Downloads/AuthKey_{KEY_ID}.p8")
-BUNDLE_ID = "au.leybourne.webby"
+BUNDLE_ID = "app.webby"
 OPENSSL = "/usr/bin/openssl"
 API = "https://api.appstoreconnect.apple.com/v1"
 
