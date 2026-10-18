@@ -8,7 +8,8 @@
 import SwiftUI
 
 enum BrowserAction {
-    case back, forward, reload, stop, home, search, newTab, closeTab, tabs
+    case back, forward, reload, stop, home, search, newTab, closeTab, reopenTab, tabs
+    case find, toggleDarkPages
     case toggleBookmark, bookmarks, history, settings
     case reader, playVideo, zoomIn, zoomOut, zoomReset
     case toggleMode, toggleDesktop, togglePrivate, controls
@@ -30,6 +31,8 @@ struct MenuState {
     var userAgent: UserAgentMode
     var tabCount: Int
     var isPrivate: Bool
+    var canReopenTab: Bool
+    var isDarkPages: Bool
 }
 
 struct BrowserMenuView: View {
@@ -135,6 +138,8 @@ struct BrowserMenuView: View {
             AnyView(ChromeButton(title: "Bookmarks", systemImage: "book.fill") { onAction(.bookmarks) }),
             AnyView(ChromeButton(title: "History", systemImage: "clock.fill") { onAction(.history) }),
             AnyView(ChromeButton(title: "Close Tab", systemImage: "xmark.square") { onAction(.closeTab) }),
+            AnyView(ChromeButton(title: "Reopen Tab", systemImage: "arrow.uturn.backward.square",
+                                 isEnabled: state.canReopenTab) { onAction(.reopenTab) }),
         ]
     }
 
@@ -144,11 +149,15 @@ struct BrowserMenuView: View {
                                  systemImage: state.mode == .cursor ? "arrow.up.and.down" : "circle.circle") { onAction(.toggleMode) }),
             AnyView(ChromeButton(title: "Reader", systemImage: "doc.plaintext", isOn: state.isReaderActive,
                                  isEnabled: !state.isStartPage) { onAction(.reader) }),
+            AnyView(ChromeButton(title: "Find on Page", systemImage: "text.magnifyingglass",
+                                 isEnabled: !state.isStartPage) { onAction(.find) }),
             AnyView(ChromeButton(title: "Play Video", systemImage: "play.rectangle.fill",
                                  isEnabled: !state.isStartPage) { onAction(.playVideo) }),
             AnyView(ChromeButton(title: "Zoom Out", systemImage: "minus.magnifyingglass") { onAction(.zoomOut) }),
             AnyView(ChromeButton(title: "\(Int((state.zoom * 100).rounded()))%", systemImage: "textformat.size") { onAction(.zoomReset) }),
             AnyView(ChromeButton(title: "Zoom In", systemImage: "plus.magnifyingglass") { onAction(.zoomIn) }),
+            AnyView(ChromeButton(title: "Dark Pages", systemImage: "moon.fill", tint: .indigo,
+                                 isOn: state.isDarkPages) { onAction(.toggleDarkPages) }),
             AnyView(ChromeButton(title: state.userAgent == .desktop ? "Mobile Site" : "Desktop Site",
                                  systemImage: state.userAgent == .desktop ? "ipad" : "desktopcomputer") { onAction(.toggleDesktop) }),
             AnyView(ChromeButton(title: "Private", systemImage: "eye.slash.fill", tint: .purple,

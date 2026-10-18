@@ -15,6 +15,18 @@ targets:
     platform: tvOS
     sources:
       - path: Webby
+      - path: Shared
+    dependencies:
+      - target: WebbyTopShelf
+    entitlements:
+      path: Webby/Resources/Webby.entitlements
+      properties:
+        # Each person on a shared Apple TV gets their own bookmarks, history, tabs and settings.
+        com.apple.developer.user-management: [runs-as-current-user]
+        # Bookmarks sync through iCloud key-value storage.
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
+        # Shared with the Top Shelf extension.
+        com.apple.security.application-groups: [group.app.webby]
     settings:
       base:
         PRODUCT_NAME: Webby
@@ -27,6 +39,35 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 57PZQ6DM94
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+  WebbyTopShelf:
+    type: app-extension
+    platform: tvOS
+    sources:
+      - path: TopShelf
+      - path: Shared
+    info:
+      path: TopShelf/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDisplayName: Webby
+        ITSAppUsesNonExemptEncryption: false
+        UIRequiredDeviceCapabilities: [arm64]   # App Store export rejects the extension without it
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.tv-top-shelf
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentProvider
+    entitlements:
+      path: TopShelf/WebbyTopShelf.entitlements
+      properties:
+        com.apple.developer.user-management: [runs-as-current-user]
+        com.apple.security.application-groups: [group.app.webby]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.webby.topshelf
+        TARGETED_DEVICE_FAMILY: "3"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 57PZQ6DM94
+        SKIP_INSTALL: YES
 schemes:
   Webby:
     build:

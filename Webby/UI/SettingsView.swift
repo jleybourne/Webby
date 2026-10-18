@@ -37,9 +37,12 @@ struct SettingsView: View {
                         ForEach(UserAgentMode.allCases) { Text($0.name).tag($0) }
                     }
                     Toggle("Block Ads & Trackers", isOn: $settings.blockAds)
+                    Toggle("Dark Pages", isOn: $settings.darkPages)
                     Toggle("Private Browsing", isOn: $settings.privateBrowsing)
                     Toggle("Open Pop-ups in New Tabs", isOn: $settings.openPopupsInNewTab)
                     Toggle("Restore Tabs on Launch", isOn: $settings.restoreTabs)
+                    Toggle("Sync Bookmarks with iCloud", isOn: $settings.iCloudSync)
+                        .onChange(of: settings.iCloudSync) { _, on in if on { library.syncWithCloud() } }
                     Picker("Default Page Zoom", selection: $settings.defaultZoom) {
                         ForEach(zooms, id: \.self) { Text("\(Int(($0 * 100).rounded()))%").tag($0) }
                     }

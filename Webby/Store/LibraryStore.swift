@@ -3,7 +3,9 @@
 //  Webby
 //
 //  Bookmarks, favourites and history. Persisted as compact JSON in
-//  UserDefaults (the persistent store available to tvOS apps).
+//  UserDefaults (the persistent store available to tvOS apps). Bookmarks
+//  also sync through iCloud key-value storage: whichever Apple TV changed
+//  them last wins.
 //
 
 import Foundation
@@ -32,6 +34,8 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var history: [HistoryEntry] = []
 
     private let defaults: UserDefaults
+    private let cloud = NSUbiquitousKeyValueStore.default
+    private var cloudObserver: NSObjectProtocol?
     private let maxHistory = 400
     private var saveWorkItem: DispatchWorkItem?
 
@@ -39,6 +43,10 @@ final class LibraryStore: ObservableObject {
         static let bookmarks = "library.bookmarks"
         static let history = "library.history"
         static let seeded = "library.seeded"
+        /// When bookmarks were last changed on this Apple TV (or taken from iCloud).
+        static let bookmarksModified = "library.bookmarksModified"
+        static let cloudBookmarks = "bookmarks"
+        static let cloudModified = "bookmarksModified"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -67,25 +75,25 @@ final class LibraryStore: ObservableObject {
             bookmarks.insert(Bookmark(title: title.isEmpty ? URLResolver.displayHost(url) : title,
                                       url: url, isFavorite: true), at: 0)
         }
-        scheduleSave()
+        bookmarksChanged()
     }
 
     func toggleFavorite(_ bookmark: Bookmark) {
         guard let index = bookmarks.firstIndex(where: { $0.id == bookmark.id }) else { return }
         bookmarks[index].isFavorite.toggle()
-        scheduleSave()
+        bookmarksChanged()
     }
 
     func remove(_ bookmark: Bookmark) {
         bookmarks.removeAll { $0.id == bookmark.id }
-        scheduleSave()
+        bookmarksChanged()
     }
 
     func moveToFront(_ bookmark: Bookmark) {
         guard let index = bookmarks.firstIndex(where: { $0.id == bookmark.id }) else { return }
         let item = bookmarks.remove(at: index)
         bookmarks.insert(item, at: 0)
-        scheduleSave()
+        bookmarksChanged()
     }
 
     // MARK: History
@@ -150,6 +158,49 @@ final class LibraryStore: ObservableObject {
             .filter { seen.insert($0.url.normalizedForComparison).inserted }
             .prefix(limit)
             .map { $0 }
+    }
+
+    // MARK: iCloud
+
+    func startCloudSync() {
+        guard cloudObserver == nil else { return }
+        cloudObserver = NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: cloud, queue: .main
+        ) { [weak self] _ in self?.pullFromCloud() }
+        cloud.synchronize()
+        syncWithCloud()
+    }
+
+    /// Takes iCloud's bookmarks if they're newer, otherwise shares this Apple TV's.
+    func syncWithCloud() {
+        pullFromCloud()
+        if cloud.object(forKey: Keys.cloudModified) == nil
+            || defaults.double(forKey: Keys.bookmarksModified) > cloud.double(forKey: Keys.cloudModified) {
+            pushToCloud()
+        }
+    }
+
+    private func bookmarksChanged() {
+        defaults.set(Date().timeIntervalSince1970, forKey: Keys.bookmarksModified)
+        scheduleSave()
+        pushToCloud()
+    }
+
+    private func pushToCloud() {
+        guard BrowserSettings.shared.iCloudSync, let data = try? JSONEncoder().encode(bookmarks) else { return }
+        cloud.set(data, forKey: Keys.cloudBookmarks)
+        cloud.set(defaults.double(forKey: Keys.bookmarksModified), forKey: Keys.cloudModified)
+        cloud.synchronize()
+    }
+
+    private func pullFromCloud() {
+        guard BrowserSettings.shared.iCloudSync else { return }
+        let remoteModified = cloud.double(forKey: Keys.cloudModified)
+        guard remoteModified > defaults.double(forKey: Keys.bookmarksModified),
+              let remote = Self.decode([Bookmark].self, from: cloud.data(forKey: Keys.cloudBookmarks)) else { return }
+        bookmarks = remote
+        defaults.set(remoteModified, forKey: Keys.bookmarksModified)
+        saveNow()
     }
 
     // MARK: Persistence

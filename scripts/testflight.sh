@@ -48,6 +48,15 @@ if ! xcodebuild -project Webby.xcodeproj -scheme Webby -configuration Release \
   { grep -E "error:" "$WORK/archive.log" | sort -u | head -20; tail -30 "$WORK/archive.log"; } || true; exit 1
 fi
 
+# Entitlements back on, extension first: an unsigned archive would otherwise lose them (profiles,
+# iCloud, the app group). codesign doesn't expand build variables, so fill those in here.
+expand() { sed -e "s/\$(TeamIdentifierPrefix)/$TEAM_ID./g" -e "s/\$(CFBundleIdentifier)/app.webby/g" "$1" > "$2"; }
+expand TopShelf/WebbyTopShelf.entitlements "$WORK/shelf.entitlements"
+expand Webby/Resources/Webby.entitlements "$WORK/app.entitlements"
+APP="$ARCHIVE/Products/Applications/Webby.app"
+codesign --force --sign - --entitlements "$WORK/shelf.entitlements" "$APP/PlugIns/WebbyTopShelf.appex"
+codesign --force --sign - --entitlements "$WORK/app.entitlements" "$APP"
+
 echo "• Signing and uploading…"
 if ! xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$WORK/ExportOptions.plist" \
      -exportPath "$WORK/export" -allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" \

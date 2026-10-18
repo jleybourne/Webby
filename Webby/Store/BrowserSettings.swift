@@ -99,6 +99,10 @@ final class BrowserSettings: ObservableObject {
     @Published var edgeScrolling: Bool { didSet { defaults.set(edgeScrolling, forKey: Keys.edgeScrolling) } }
     @Published var defaultZoom: Double { didSet { defaults.set(defaultZoom, forKey: Keys.defaultZoom) } }
     @Published var showHints: Bool { didSet { defaults.set(showHints, forKey: Keys.showHints) } }
+    @Published var darkPages: Bool { didSet { defaults.set(darkPages, forKey: Keys.darkPages) } }
+    @Published var iCloudSync: Bool { didSet { defaults.set(iCloudSync, forKey: Keys.iCloudSync) } }
+    /// Zoom chosen for each site (keyed by display host), applied whenever that site loads.
+    @Published private(set) var siteZooms: [String: Double] { didSet { defaults.set(siteZooms, forKey: Keys.siteZooms) } }
 
     private enum Keys {
         static let searchEngine = "settings.searchEngine"
@@ -113,6 +117,9 @@ final class BrowserSettings: ObservableObject {
         static let edgeScrolling = "settings.edgeScrolling"
         static let defaultZoom = "settings.defaultZoom"
         static let showHints = "settings.showHints"
+        static let darkPages = "settings.darkPages"
+        static let iCloudSync = "settings.iCloudSync"
+        static let siteZooms = "settings.siteZooms"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -130,6 +137,8 @@ final class BrowserSettings: ObservableObject {
             Keys.edgeScrolling: true,
             Keys.defaultZoom: 1.0,
             Keys.showHints: true,
+            Keys.darkPages: false,
+            Keys.iCloudSync: true,
         ])
         searchEngine = SearchEngine(rawValue: defaults.string(forKey: Keys.searchEngine) ?? "") ?? .google
         userAgentMode = UserAgentMode(rawValue: defaults.string(forKey: Keys.userAgent) ?? "") ?? .desktop
@@ -143,6 +152,21 @@ final class BrowserSettings: ObservableObject {
         edgeScrolling = defaults.bool(forKey: Keys.edgeScrolling)
         defaultZoom = defaults.double(forKey: Keys.defaultZoom)
         showHints = defaults.bool(forKey: Keys.showHints)
+        darkPages = defaults.bool(forKey: Keys.darkPages)
+        iCloudSync = defaults.bool(forKey: Keys.iCloudSync)
+        siteZooms = defaults.dictionary(forKey: Keys.siteZooms) as? [String: Double] ?? [:]
+    }
+
+    func zoom(for url: URL?) -> Double {
+        guard let url, url.host != nil else { return defaultZoom }
+        return siteZooms[URLResolver.displayHost(url)] ?? defaultZoom
+    }
+
+    /// Remembers a site's zoom; going back to the default forgets it. Nothing is kept in Private Browsing.
+    func setZoom(_ zoom: Double, for url: URL?) {
+        guard !privateBrowsing, let url, url.host != nil else { return }
+        let host = URLResolver.displayHost(url)
+        if abs(zoom - defaultZoom) < 0.01 { siteZooms[host] = nil } else { siteZooms[host] = zoom }
     }
 
     /// The legacy engine reads its user agent from the registration domain when a web view is created.

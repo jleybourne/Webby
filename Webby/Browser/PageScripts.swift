@@ -191,6 +191,108 @@ enum PageScripts {
         """
     }
 
+    /// Dark Pages: inverts light pages (and inverts media back) so they read light-on-dark.
+    /// Pages that are already dark are left alone.
+    static func darkPages(_ enabled: Bool) -> String {
+        """
+        (function(on){
+          var id = '__webby-dark', el = document.getElementById(id);
+          if (!on) { if (el) { el.parentNode.removeChild(el); } return '0'; }
+          if (el) { return '1'; }
+          function lum(c) {
+            var m = (c || '').match(/[\\d.]+/g);
+            if (!m || m.length < 3 || (m.length > 3 && parseFloat(m[3]) === 0)) { return null; }
+            return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+          }
+          var bg = document.body ? lum(getComputedStyle(document.body).backgroundColor) : null;
+          if (bg === null) { bg = lum(getComputedStyle(document.documentElement).backgroundColor); }
+          if (bg !== null && bg < 0.4) { return 'dark'; }
+          var s = document.createElement('style');
+          s.id = id;
+          s.textContent = 'html{filter:invert(1) hue-rotate(180deg)!important;background:#fff!important}' +
+            'img,video,picture,canvas,iframe,embed,object,[style*="background-image"],mark.__webby-find{filter:invert(1) hue-rotate(180deg)!important}';
+          (document.head || document.documentElement).appendChild(s);
+          return '1';
+        })(\(enabled ? "true" : "false"));
+        """
+    }
+
+    /// Highlights every match of `query` on the page and scrolls to the first. Returns the count.
+    static func find(_ query: String) -> String {
+        """
+        (function(q){
+          \(findClearBody)
+          q = q.toLowerCase();
+          if (!q) { return '0'; }
+          if (!document.getElementById('__webby-find-style')) {
+            var st = document.createElement('style');
+            st.id = '__webby-find-style';
+            st.textContent = 'mark.__webby-find{background:#ffd60a!important;color:#000!important;border-radius:3px}' +
+              'mark.__webby-find.__webby-current{background:#ff9f0a!important;outline:4px solid #ff9f0a}';
+            (document.head || document.documentElement).appendChild(st);
+          }
+          // Room below the content, so the last matches can scroll clear of the find bar.
+          document.documentElement.style.paddingBottom = '45vh';
+          var skip = {SCRIPT:1, STYLE:1, NOSCRIPT:1, TEXTAREA:1, INPUT:1, SELECT:1};
+          var walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(n) {
+              var p = n.parentNode;
+              if (!p || skip[p.nodeName] || !n.nodeValue || n.nodeValue.toLowerCase().indexOf(q) < 0) { return NodeFilter.FILTER_REJECT; }
+              return p.offsetParent !== null || p === document.body ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+          });
+          var nodes = [], n;
+          while ((n = walker.nextNode())) { nodes.push(n); }
+          var marks = [];
+          for (var i = 0; i < nodes.length && marks.length < 500; i++) {
+            var node = nodes[i];
+            var idx;
+            while (node && (idx = node.nodeValue.toLowerCase().indexOf(q)) >= 0 && marks.length < 500) {
+              var match = node.splitText(idx);
+              node = match.splitText(q.length);
+              var mark = document.createElement('mark');
+              mark.className = '__webby-find';
+              match.parentNode.replaceChild(mark, match);
+              mark.appendChild(match);
+              marks.push(mark);
+            }
+          }
+          window.__webbyFind = {marks: marks, index: -1};
+          return String(marks.length);
+        })(\(jsString(query)));
+        """
+    }
+
+    /// Moves to the next (1) or previous (-1) match and scrolls it into view. Returns "current/total".
+    static func findStep(_ delta: Int) -> String {
+        """
+        (function(d){
+          var f = window.__webbyFind;
+          if (!f || !f.marks.length) { return '0/0'; }
+          if (f.index >= 0) { f.marks[f.index].className = '__webby-find'; }
+          f.index = (f.index + d + f.marks.length) % f.marks.length;
+          var m = f.marks[f.index];
+          m.className = '__webby-find __webby-current';
+          m.scrollIntoView({block: 'center', inline: 'center'});
+          return (f.index + 1) + '/' + f.marks.length;
+        })(\(delta));
+        """
+    }
+
+    static let findClear = "(function(){ \(findClearBody) return '1'; })();"
+
+    private static let findClearBody = """
+          var old = document.querySelectorAll('mark.__webby-find');
+          for (var oi = 0; oi < old.length; oi++) {
+            var om = old[oi], parent = om.parentNode;
+            while (om.firstChild) { parent.insertBefore(om.firstChild, om); }
+            parent.removeChild(om);
+            parent.normalize();
+          }
+          window.__webbyFind = null;
+          document.documentElement.style.paddingBottom = '';
+    """
+
     static func selectOption(_ index: Int) -> String {
         """
         (function(i){

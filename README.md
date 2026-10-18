@@ -13,15 +13,20 @@ Webby drives the WebKit engine that ships inside tvOS directly from the Siri Rem
 | 🖱️ **Adaptive pointer** | iPadOS-style cursor that grows and tints over links and buttons. Movement speeds up the faster you swipe. |
 | 📜 **Scroll mode** | Hold Click to switch. Swipe to scroll with momentum, like a trackpad. |
 | ↕️ **Edge and D-pad scrolling** | Push the pointer against a screen edge, or click the D-pad edges, to page around. |
-| ⌨️ **Real form input** | Clicking a text field opens the tvOS keyboard (with dictation). Dropdowns become native pickers. Choose *Go* to submit forms. |
-| 🗂️ **Tabs** | Visual tab switcher with live thumbnails. Pop-ups and `target=_blank` links open in new tabs. Tabs are restored on launch, and idle tabs are suspended automatically to save memory. |
-| ⭐ **Favorites and bookmarks** | One-click favoriting, a favorites grid on the start page, and a "Frequently Visited" row. |
+| ⌨️ **Real form input** | Clicking a text field opens the tvOS keyboard (with dictation), or type on your iPhone. Dropdowns become native pickers. Choose *Go* to submit forms. |
+| 🔑 **Sign-in with AutoFill** | Sign-in forms open as one Username and Password dialog that tvOS can AutoFill from your iPhone. |
+| 🗂️ **Tabs** | Visual tab switcher with live thumbnails. Pop-ups and `target=_blank` links open in new tabs. Tabs are restored on launch, closed tabs can be reopened, and idle tabs are suspended automatically to save memory. |
+| ⭐ **Favorites and bookmarks** | One-click favoriting, a favorites grid on the start page, and a "Frequently Visited" row. Bookmarks sync between Apple TVs through iCloud. |
+| 📺 **Top Shelf** | With Webby in the top row of the Home Screen, your favorite sites appear above it. Select one to open it. |
+| 👥 **A profile for each person** | Everyone in the household gets their own bookmarks, history, tabs and settings, following the Apple TV's current user. |
 | 🕘 **History** | Grouped by day. You can search it from the address bar. |
 | 🔎 **Smart address bar** | tvOS search keyboard with live suggestions from your search engine, bookmarks and history. Choose Google, DuckDuckGo, Bing, Brave or Ecosia. |
 | 🛡️ **Ad and tracker blocking** | About 170 ad and tracker networks are blocked before any request leaves the device. A live counter shows what was blocked on each page. |
 | 📖 **Reader mode** | Strips articles down to large, TV-legible text. |
-| ▶️ **Native video** | Sends a page's video to the system AVPlayer for full Siri Remote scrubbing. |
-| 🔍 **Page zoom** | Zoom from 50% to 300%. You can set a default zoom level. |
+| 🔦 **Find on Page** | Highlights every match and steps through them. |
+| 🌙 **Dark Pages** | Turns bright pages dark, leaving photos and video as they are. |
+| ▶️ **Native video** | Sends a page's video to the system AVPlayer for full Siri Remote scrubbing, with Picture in Picture. |
+| 🔍 **Page zoom** | Zoom from 50% to 300%. Webby remembers the zoom for each site, and you can set a default. |
 | 🖥️ **Desktop / mobile sites** | Switch user agent: Mac Safari, iPad, iPhone or Apple TV. |
 | 🕶️ **Private browsing** | No history and no saved tabs. Website data is wiped when you leave the app. |
 | ⚡ **Built for speed** | Native start page that appears instantly, a 256 MB shared HTTP cache, lazily created engines, and LRU suspension of background tabs. |

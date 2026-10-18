@@ -10,6 +10,10 @@ final class TabManager: ObservableObject {
 
     @Published private(set) var tabs: [BrowserTab] = []
     @Published private(set) var selectedID: UUID?
+    /// Most recent first; kept for this session only, and never in Private Browsing.
+    @Published private(set) var recentlyClosed: [ClosedTab] = []
+
+    struct ClosedTab: Identifiable { let id = UUID(); var url: URL; var title: String }
 
     /// Apple TV memory is tight; tabs beyond this many live engines are suspended.
     let maxLiveEngines = 4
@@ -96,6 +100,7 @@ final class TabManager: ObservableObject {
     func close(_ tab: BrowserTab) {
         guard let index = tabs.firstIndex(where: { $0 === tab }) else { return }
         let wasSelected = tab.id == selectedID
+        remember(tab)
         tab.stop()
         tab.webView?.removeFromSuperview()
         tabs.remove(at: index)
@@ -112,10 +117,34 @@ final class TabManager: ObservableObject {
     }
 
     func closeAll() {
+        tabs.reversed().forEach(remember)
         tabs.forEach { $0.stop(); $0.webView?.removeFromSuperview() }
         tabs.removeAll()
         lruOrder.removeAll()
         newTab(url: nil, select: true)
+    }
+
+    /// Reopens the most recently closed tab (or a specific one) next to the current tab.
+    @discardableResult
+    func reopenClosedTab(_ closed: ClosedTab? = nil) -> BrowserTab? {
+        guard let target = closed ?? recentlyClosed.first else { return nil }
+        recentlyClosed.removeAll { $0.id == target.id }
+        // A lone blank start page tab is replaced rather than kept beside the reopened one.
+        let blank = tabs.count == 1 && tabs[0].isStartPage && tabs[0].webView == nil ? tabs[0] : nil
+        let tab = newTab(url: target.url, select: true, after: selectedTab)
+        if let blank, let index = tabs.firstIndex(where: { $0 === blank }) {
+            tabs.remove(at: index)
+            lruOrder.removeAll { $0 == blank.id }
+            saveSession()
+        }
+        return tab
+    }
+
+    private func remember(_ tab: BrowserTab) {
+        guard !settings.privateBrowsing, let url = tab.url else { return }
+        recentlyClosed.removeAll { $0.url == url }
+        recentlyClosed.insert(ClosedTab(url: url, title: tab.displayTitle), at: 0)
+        if recentlyClosed.count > 10 { recentlyClosed.removeLast(recentlyClosed.count - 10) }
     }
 
     func selectNext(offset: Int) {

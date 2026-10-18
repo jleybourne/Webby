@@ -177,6 +177,17 @@ final class BrowserTab: NSObject, ObservableObject, Identifiable, WBWebViewDeleg
     func applyZoom(_ value: Double) {
         zoom = min(3.0, max(0.5, value))
         evaluate(PageScripts.setZoom(zoom))
+        settings.setZoom(zoom, for: url)
+    }
+
+    /// Turns Dark Pages on or off for this page. The engine's own background (seen around the
+    /// page, e.g. in the overscan area) follows, so a darkened page has no white edges.
+    func applyDarkPages(_ on: Bool) {
+        guard let webView, !isReaderActive else { return }
+        let darkened = webView.evaluate(PageScripts.darkPages(on)) == "1"
+        let color: UIColor = darkened ? .black : .white
+        webView.scrollView?.backgroundColor = color
+        webView.subviews.forEach { $0.backgroundColor = color }
     }
 
     func toggleReader() -> Bool {
@@ -279,8 +290,10 @@ final class BrowserTab: NSObject, ObservableObject, Identifiable, WBWebViewDeleg
     func webViewDidFinishLoad(_ webView: WBWebView) {
         activeLoads = max(0, activeLoads - 1)
         webView.evaluate(PageScripts.bootstrap)
-        if abs(zoom - 1.0) > 0.01 { webView.evaluate(PageScripts.setZoom(zoom)) }
         refreshState()
+        zoom = settings.zoom(for: url)
+        if abs(zoom - 1.0) > 0.01 { webView.evaluate(PageScripts.setZoom(zoom)) }
+        if settings.darkPages { applyDarkPages(true) }
         if activeLoads == 0 && !webView.isLoading {
             finishProgress()
             if !settings.privateBrowsing, !isReaderActive, let url {

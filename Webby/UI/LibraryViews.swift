@@ -13,6 +13,7 @@ struct TabSwitcherView: View {
     @ObservedObject var tabManager: TabManager
     let onSelect: (BrowserTab) -> Void
     let onNewTab: () -> Void
+    let onReopen: () -> Void
     let dismiss: () -> Void
 
     private let columns = Array(repeating: GridItem(.fixed(380), spacing: 50), count: 4)
@@ -21,6 +22,9 @@ struct TabSwitcherView: View {
         PanelContainer(title: "Tabs", dismiss: dismiss) {
             HStack(spacing: 24) {
                 Button { onNewTab() } label: { Label("New Tab", systemImage: "plus") }
+                if !tabManager.recentlyClosed.isEmpty {
+                    Button { onReopen() } label: { Label("Reopen Closed Tab", systemImage: "arrow.uturn.backward") }
+                }
                 Button { tabManager.closeAll(); dismiss() } label: {
                     DestructiveLabel("Close All", systemImage: "xmark")
                 }

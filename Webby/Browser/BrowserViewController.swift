@@ -50,6 +50,8 @@ final class BrowserViewController: UIViewController {
     private weak var observedTab: BrowserTab?
     private var lastHUDKey = ""
     private var lastShownError: String?
+    /// Kept so Picture in Picture can bring the full-screen player back.
+    private var playerController: AVPlayerViewController?
 
     // Touch & motion state
     private var lastTouchPoint: CGPoint?
@@ -152,6 +154,15 @@ final class BrowserViewController: UIViewController {
                 self.tabManager.rebuildAllEngines()
                 self.displaySelectedTab()
                 self.toast.show("Requesting \(mode.shortName) sites")
+            }
+            .store(in: &cancellables)
+
+        settings.$darkPages
+            .dropFirst()
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] on in
+                self?.tabManager.tabs.forEach { $0.applyDarkPages(on) }
             }
             .store(in: &cancellables)
 
@@ -662,7 +673,9 @@ final class BrowserViewController: UIViewController {
             mode: mode,
             userAgent: settings.userAgentMode,
             tabCount: tabManager.tabs.count,
-            isPrivate: settings.privateBrowsing
+            isPrivate: settings.privateBrowsing,
+            canReopenTab: !tabManager.recentlyClosed.isEmpty,
+            isDarkPages: settings.darkPages
         )
         let menu = BrowserMenuView(state: state,
                                    onAction: { [weak self] action in
@@ -695,6 +708,16 @@ final class BrowserViewController: UIViewController {
         presentPanel(search)
     }
 
+    /// Opens a site from outside the browser (a Top Shelf favourite): in the current tab if it's
+    /// showing the start page, otherwise in a new tab.
+    func open(_ url: URL) {
+        let load = { [weak self] in
+            guard let self else { return }
+            if let tab = self.currentTab, tab.isStartPage { tab.load(url) } else { self.tabManager.newTab(url: url, select: true) }
+        }
+        if presentedViewController != nil { dismiss(animated: false, completion: load) } else { load() }
+    }
+
     func run(_ action: BrowserAction) {
         guard let tab = currentTab else { return }
         switch action {
@@ -711,6 +734,13 @@ final class BrowserViewController: UIViewController {
             if newTab.url == nil { presentSearch() }
         case .closeTab:
             tabManager.close(tab)
+        case .reopenTab:
+            if tabManager.reopenClosedTab() == nil { toast.show("No recently closed tabs") }
+        case .find:
+            presentFind()
+        case .toggleDarkPages:
+            settings.darkPages.toggle()
+            toast.show(settings.darkPages ? "Dark Pages On" : "Dark Pages Off")
         case .tabs:
             presentPanel(TabSwitcherView(
                 tabManager: tabManager,
@@ -722,6 +752,10 @@ final class BrowserViewController: UIViewController {
                     guard let self else { return }
                     self.tabManager.newTab(url: self.settings.homePageURL, select: true)
                     self.dismiss(animated: true)
+                },
+                onReopen: { [weak self] in
+                    self?.tabManager.reopenClosedTab()
+                    self?.dismiss(animated: true)
                 },
                 dismiss: { [weak self] in self?.dismiss(animated: true) }
             ))
@@ -787,10 +821,25 @@ final class BrowserViewController: UIViewController {
         }
     }
 
+    private func presentFind() {
+        presentPanel(FindBarView(
+            onFind: { [weak self] query in Int(self?.currentTab?.evaluate(PageScripts.find(query)) ?? "") ?? 0 },
+            onStep: { [weak self] delta in self?.currentTab?.evaluate(PageScripts.findStep(delta)) ?? "0/0" },
+            dismiss: { [weak self] in
+                self?.currentTab?.evaluate(PageScripts.findClear)
+                self?.dismiss(animated: true)
+            }
+        ))
+    }
+
     private func playNatively(_ url: URL) {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         let player = AVPlayer(url: url)
         let controller = AVPlayerViewController()
         controller.player = player
+        controller.allowsPictureInPicturePlayback = true
+        controller.delegate = self
+        playerController = controller
         present(controller, animated: true) { player.play() }
     }
 
@@ -801,6 +850,20 @@ final class BrowserViewController: UIViewController {
             preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+}
+
+// MARK: - Picture in Picture
+
+extension BrowserViewController: AVPlayerViewControllerDelegate {
+    func playerViewControllerShouldAutomaticallyDismissAtPictureInPictureStart(_ controller: AVPlayerViewController) -> Bool {
+        true
+    }
+
+    func playerViewController(_ controller: AVPlayerViewController,
+                              restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completion: @escaping (Bool) -> Void) {
+        guard presentedViewController == nil else { completion(false); return }
+        present(controller, animated: true) { completion(true) }
     }
 }
 
