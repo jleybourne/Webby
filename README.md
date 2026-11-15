@@ -63,7 +63,7 @@ tvOS has **no public web view**. `WKWebView` and `SFSafariViewController` don't 
 1. **Runtime lookup.** `NSClassFromString(@"UIWebView")` finds the class. Nothing links against it at compile time, so the SDK's "unavailable" marking never applies.
 2. **A private protocol.** `WBLegacyWebViewSurface` (declared inside `WBWebView.m`) redeclares just the `UIWebView` methods Webby needs (`loadRequest:`, `loadHTMLString:baseURL:`, `goBack`, `stringByEvaluatingJavaScriptFromString:`, `scrollView`, `request`, and so on). The engine instance is cast to `UIView<WBLegacyWebViewSurface>` so calls compile.
 3. **Defensive calls.** Every property access is guarded with `respondsToSelector:`, so if Apple changes the class Webby degrades instead of crashing.
-4. **Engine setup** (`setUpEngine`): `scalesPageToFit = YES`, inline media playback on, autoplay allowed (`mediaPlaybackRequiresUserAction = NO`), `keyboardDisplayRequiresUserAction = NO`, and crucially **`userInteractionEnabled = NO`**. The engine never receives touches or focus; Webby drives it entirely from outside.
+4. **Engine setup** (`setUpEngine`): `scalesPageToFit = YES`, inline media playback on, autoplay allowed (`mediaPlaybackRequiresUserAction = NO`), `keyboardDisplayRequiresUserAction = NO`, and crucially **`userInteractionEnabled = NO`**. The engine never receives touches or focus; Webby drives it entirely from outside. The scroll view's content insets are zeroed too (`contentInsetAdjustmentBehavior = .never`), so a page fills the screen instead of being laid out inside the tvOS safe area.
 5. **Delegate forwarding.** `WBWebView` sets itself as the engine's delegate and forwards the four `UIWebViewDelegate` callbacks (`shouldStartLoadWithRequest`, `didStartLoad`, `didFinishLoad`, `didFailLoadWithError`) to a clean Swift-friendly `WBWebViewDelegate` protocol.
 6. **Availability check.** `WBWebView.isEngineAvailable` returns whether the class exists. `BrowserViewController.viewDidAppear` shows a "Web Engine Unavailable" alert if it doesn't, rather than crashing.
 7. **Snapshots.** `snapshotWithMaxWidth:` renders the view's layer into a `UIImage` for tab thumbnails.
@@ -141,7 +141,8 @@ On the start page, panels and menus, the normal tvOS focus engine takes over (se
 | Path | Purpose |
 |---|---|
 | `project.yml` | XcodeGen spec: targets, deployment target, bundle IDs, entitlements, team, scheme |
-| `Webby/App/AppDelegate.swift` | `@main` entry point. Sets up the cache, cookie policy, content blocker, user agent, iCloud sync, Top Shelf publisher and the window. Handles `webbytv://` deep links |
+| `Webby/App/AppDelegate.swift` | `@main` entry point. Sets up the cache, cookie policy, content blocker, user agent, iCloud sync and Top Shelf publisher |
+| `Webby/App/SceneDelegate.swift` | Builds the browser window for the app's scene and handles `webbytv://` deep links |
 | `Webby/Engine/WBWebView.h`, `WBWebView.m` | Objective-C wrapper around the runtime `UIWebView` class |
 | `Webby/Engine/Webby-Bridging-Header.h` | Exposes `WBWebView` to Swift |
 | `Webby/Engine/ContentBlocker.swift` | `URLProtocol` that fails requests to blocked ad/tracker hosts, and the block list |
@@ -173,7 +174,7 @@ On the start page, panels and menus, the normal tvOS focus engine takes over (se
 ### Key types and how they connect
 
 ```
-AppDelegate
+SceneDelegate
  └─ UIWindow.rootViewController = BrowserViewController
       ├─ tabManager: TabManager ──── tabs: [BrowserTab] ──── webView: WBWebView? ──── UIWebView (runtime)
       │                               (delegate = BrowserViewController)   (delegate = BrowserTab)
@@ -186,7 +187,7 @@ AppDelegate
            HistoryView, SettingsView, FindBarView, ControlsGuideView, AVPlayerViewController
 
 TopShelfPublisher.shared ── observes LibraryStore.$bookmarks ── writes ShelfFavorites to group.app.webby
-TopShelf ContentProvider ── reads ShelfFavorites ── items open webbytv://open?url=… ── AppDelegate.open(url:)
+TopShelf ContentProvider ── reads ShelfFavorites ── items open webbytv://open?url=… ── SceneDelegate.open(url:)
 ContentBlocker (URLProtocol, registered globally) ── posts .contentBlockerDidBlock ── BrowserTab.blockedCount
 ```
 
@@ -219,7 +220,7 @@ State flows one way: `BrowserTab` publishes changes → `BrowserViewController.s
 3. `ContentBlocker.install(enabled:)` registers the `URLProtocol`.
 4. `settings.applyUserAgent()` registers the UA before any engine exists.
 5. `LibraryStore.shared.startCloudSync()` and `TopShelfPublisher.shared.start(library:)`.
-6. Window with `BrowserViewController` as root. Its `viewDidLoad` builds the layers, wires gestures and Combine subscriptions, calls `tabManager.restoreSession()`, and starts a `CADisplayLink` (`tick`).
+6. The scene connects: `SceneDelegate.scene(_:willConnectTo:options:)` makes the window, with `BrowserViewController` as root. Its `viewDidLoad` builds the layers, wires gestures and Combine subscriptions, calls `tabManager.restoreSession()`, and starts a `CADisplayLink` (`tick`).
 7. `viewDidAppear`: engine-unavailable alert, or the Controls guide on first run (`settings.showHints`).
 
 ### Entering a URL
@@ -323,7 +324,7 @@ Writing values uses the native `value` property setter and fires `input` and `ch
 | **Settings** | Search engine, home page, UA, blocking, dark pages, private, popups, restore tabs, iCloud sync, default zoom, cursor/scroll speed (Slow 1.0, Normal 1.6, Fast 2.2, Very Fast 3.0), edge scrolling, privacy actions, About (version, engine status, block-list size) | `Webby/UI/SettingsView.swift` | `DataCleaner`, `onClearData` → `rebuildAllEngines()` |
 | **Controls guide** | Shown once on first launch and from the menu/settings | `SettingsView.swift` | `ControlsGuideView` |
 | **Top Shelf** | Up to 12 favourites, as 800×450 tiles (site colour, favicon in a white rounded square, or a monogram) | `Webby/Store/TopShelfPublisher.swift`, `TopShelf/ContentProvider.swift`, `Shared/ShelfFavorites.swift` | `publish(_:)`, `renderTile`, `loadTopShelfContent` |
-| **Deep links** | `webbytv://open?url=<http(s) url>` opens in the current tab if it's on the start page, otherwise in a new tab | `AppDelegate.swift`, `ShelfFavorites.swift` | `AppDelegate.application(_:open:options:)`, `BrowserViewController.open(_:)` |
+| **Deep links** | `webbytv://open?url=<http(s) url>` opens in the current tab if it's on the start page, otherwise in a new tab | `SceneDelegate.swift`, `ShelfFavorites.swift` | `SceneDelegate.open(_:)`, `BrowserViewController.open(_:)` |
 | **Memory management** | Engines are created only when a tab is displayed; only the 4 most recently selected tabs keep live engines; on memory warning all background engines are suspended and the URL cache is purged. Suspending keeps a 640 px snapshot and the URL | `TabManager.swift`, `BrowserTab.swift` | `touch(_:)`, `suspend()`, `didReceiveMemoryWarning()` |
 
 ---
@@ -437,9 +438,14 @@ Run `bash scripts/icon/build.sh` (requires Python with Pillow and Node with Play
 
 Found by reading the code. None are marked `TODO`/`FIXME` in the source (there are no such comments).
 
+### Platform
+
+- **The scene lifecycle is load-bearing.** tvOS 27 kills an app that builds its `UIWindow` in the app delegate (`UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption`), so `SceneDelegate` and the `UIApplicationSceneManifest` in `Info.plist` are required, not template leftovers. `application(_:open:options:)` is never called once a scene exists; deep links go through `SceneDelegate`.
+
 ### Engine and rendering
 
 - **Private API.** Everything depends on tvOS continuing to ship `UIWebView`. There's no fallback engine.
+- **Pages are full-bleed by construction.** `WBWebView.setUpEngine` clears the scroll view's content insets; leave the safe area alone and every page sits inside a white border drawn by the engine's own background.
 - **The page never gets real input.** The engine has `userInteractionEnabled = NO`; clicks are synthesised in JS at the main frame's `elementFromPoint`. Consequences: content **inside iframes** (embedded players, many captchas, some payment and sign-in widgets) gets the click on the `<iframe>` element, not on what's inside it; CSS `:hover` and drag interactions don't happen; there's no text selection or copy.
 - **Bootstrap runs after load,** so scripts that call `window.open` or open `target` links before `webViewDidFinishLoad` aren't routed to new tabs yet.
 - **Every JS call is synchronous on the main thread.** Hover tests run up to ~8 times a second, each also evaluating `layoutMetrics`. A heavy page can make the pointer feel sticky.
