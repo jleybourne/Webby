@@ -82,6 +82,14 @@ static NSString *const WBEngineClassName = @"UIWebView";
     scrollView.bounces = YES;
     scrollView.showsVerticalScrollIndicator = YES;
     scrollView.indicatorStyle = UIScrollViewIndicatorStyleDefault;
+    // Pages are full-bleed, so the engine ignores the safe area. Left to itself the scroll view
+    // turns that safe area into a content inset and the engine's white background shows through as
+    // a border down the sides and across the top of every page.
+    if ([scrollView respondsToSelector:@selector(setContentInsetAdjustmentBehavior:)]) {
+        scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+    scrollView.contentInset = UIEdgeInsetsZero;
+    scrollView.scrollIndicatorInsets = UIEdgeInsetsZero;
     // Webby drives scrolling itself from the Siri Remote, so the engine never takes input directly.
     engine.userInteractionEnabled = NO;
 

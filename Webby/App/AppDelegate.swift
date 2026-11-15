@@ -8,8 +8,6 @@ import UIKit
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    var window: UIWindow?
-
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let settings = BrowserSettings.shared
@@ -22,23 +20,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         LibraryStore.shared.startCloudSync()
         TopShelfPublisher.shared.start(library: LibraryStore.shared)
 
-        let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = BrowserViewController()
-        window.makeKeyAndVisible()
-        self.window = window
-        return true
-    }
-
-    /// Top Shelf favourites open as `webbytv://open?url=…`.
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        guard let target = ShelfFavorites.target(of: url),
-              let browser = window?.rootViewController as? BrowserViewController else { return false }
-        browser.open(target)
         return true
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
         LibraryStore.shared.saveNow()
-        (window?.rootViewController as? BrowserViewController)?.tabManager.saveSession()
+        SceneDelegate.browser?.tabManager.saveSession()
     }
 }
